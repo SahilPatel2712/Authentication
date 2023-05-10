@@ -30,7 +30,9 @@ mongoose.connect("mongodb://0.0.0.0:27017/userDB", { useNewUrlParser: true })
 
 const userSchema = new mongoose.Schema({
     email: String,
-    password: String
+    password: String,
+    secret: String
+
 })
 userSchema.plugin(passportLocalMongoose)
 
@@ -47,11 +49,9 @@ app.route("/")
 
 app.route("/secrets")
     .get((req, res) => {
-        if (req.isAuthenticated()) {
-            res.render("secrets")
-        } else {
-            res.redirect("/login")
-        }
+        User.find({ "secret": { $ne: null } }).then((value) => {
+            res.render("secrets", { userWithSecrets: value })
+        })
     })
 
 
@@ -88,10 +88,33 @@ app.route("/register")
             console.log(err);
         })
     })
+app.route("/submit")
+    .get((req, res) => {
+        if (req.isAuthenticated()) {
+            res.render("submit")
+        } else {
+            res.redirect("/login")
+        }
+    })
+    .post((req, res) => {
+        const submittedScreate = req.body.secret
+        // when we initiate new login session passport saves user detail in req variable
+        User.findOne({ _id: req.user.id }).then((value) => {
+            value.secret = submittedScreate
+            value.save().then(() => {
+                res.redirect("/secrets")
+            })
+                .catch((err) => {
+                    console.log("save error " + err);
+                })
+        }).catch((err) => {
+            console.log("find ID error= " + err);
+        })
+    })
 
-    app.route("/logout")
-    .get((req,res)=>{
-        req.logOut((err)=>{
+app.route("/logout")
+    .get((req, res) => {
+        req.logOut((err) => {
             console.log(err);
         })
         res.redirect("/")
